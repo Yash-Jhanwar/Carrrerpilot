@@ -5,15 +5,15 @@ import { motion } from "framer-motion";
 import {
   Plane,
   LogIn,
-  Chrome,
-  UserCheck,
-  AlertCircle,
+  UserPlus,
   Mail,
   Lock,
   User,
   AlertTriangle,
   Copy,
   CheckCircle,
+  AlertCircle,
+  UserCheck,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui-ext/glass-card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AuthLoadingScreen } from "@/components/layout/auth-loading-screen";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({
   component: LoginComponent,
@@ -37,10 +38,13 @@ function LoginComponent() {
   } = useAuth();
   const navigate = useNavigate();
 
-  // Email form
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Active Tab: "login" or "signup"
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+
+  // Form states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
 
   // Submitting state
@@ -48,7 +52,7 @@ function LoginComponent() {
     "google" | "guest" | "email" | null
   >(null);
 
-  // Debug / environment
+  // Environment / Debug state
   const [hostname, setHostname] = useState("");
   const [isLocalNetworkIp, setIsLocalNetworkIp] = useState(false);
 
@@ -90,13 +94,9 @@ function LoginComponent() {
 
     try {
       const { redirecting } = await loginWithGoogle();
-
       if (!redirecting) {
-        // Popup sign-in succeeded — onAuthStateChanged will fire and the
-        // useEffect above will navigate. Show a success toast.
-        toast.success("Signed in with Google!");
+        toast.success("Welcome back! Signed in with Google.");
       }
-      // If redirecting === true the page has already navigated away; nothing to do.
     } catch (err: any) {
       const code: string = err?.code ?? "auth/unknown";
       const message: string = err?.message ?? "An unexpected error occurred.";
@@ -104,19 +104,12 @@ function LoginComponent() {
 
       setGoogleAuthError({ code, message });
 
-      // User-friendly toasts (more specific messages for common errors)
       if (code === "auth/popup-closed-by-user") {
-        toast.info("Sign-in cancelled. Click the button again to retry.");
+        toast.info("Google Sign-In cancelled.");
       } else if (code === "auth/unauthorized-domain") {
-        toast.error(
-          "This domain is not authorized. Add it in Firebase Console → Authentication → Settings → Authorized Domains.",
-        );
-      } else if (code === "auth/popup-blocked") {
-        toast.error(
-          "Popup was blocked. Allow popups for this site, or we'll try redirect next time.",
-        );
+        toast.error("This domain is not authorized for OAuth. See debug info.");
       } else {
-        toast.error(`Google sign-in failed: ${code}`);
+        toast.error(`Google Sign-In failed: ${code}`);
       }
     } finally {
       setSubmitting(null);
@@ -128,10 +121,9 @@ function LoginComponent() {
     try {
       await loginAnonymously();
       toast.success("Welcome! Signed in as Guest.");
-      // onAuthStateChanged → useEffect handles navigation
     } catch (err: any) {
       console.error("[Login] Guest login error:", err);
-      toast.error(err.message || "Guest sign-in failed. Please try again.");
+      toast.error(err.message || "Guest sign-in failed.");
     } finally {
       setSubmitting(null);
     }
@@ -140,35 +132,49 @@ function LoginComponent() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
-      toast.error("Please enter your email and password.");
+    // ── Client-side Validation ─────────────────────────────────────────────
+    if (!email.trim() || !password) {
+      toast.error("Please enter email and password.");
       return;
     }
-    if (isSignUp && !displayName) {
-      toast.error("Please enter your display name.");
-      return;
+
+    if (activeTab === "signup") {
+      if (!displayName.trim()) {
+        toast.error("Please enter your full name.");
+        return;
+      }
+      if (password.length < 8) {
+        toast.error("Password must be at least 8 characters long.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match. Please check again.");
+        return;
+      }
     }
 
     setSubmitting("email");
     try {
-      if (isSignUp) {
+      if (activeTab === "signup") {
         await signUpWithEmail(email, password, displayName);
-        toast.success("Account created! Welcome to CareerPilot AI.");
+        toast.success("Account created successfully! Welcome to CareerPilot.");
       } else {
         await loginWithEmail(email, password);
-        toast.success("Welcome back!");
+        toast.success("Welcome back! Successfully logged in.");
       }
-      // onAuthStateChanged → useEffect handles navigation
     } catch (err: any) {
       const code: string = err?.code ?? "";
       let friendlyMsg = err.message || "Authentication failed.";
 
-      if (code === "auth/user-not-found" || code === "auth/wrong-password") {
-        friendlyMsg = "Incorrect email or password. Please try again.";
+      // Specific Firebase Authentication error code handling
+      if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+        friendlyMsg = "Account not found or password incorrect.";
+      } else if (code === "auth/wrong-password") {
+        friendlyMsg = "Incorrect password. Please try again.";
       } else if (code === "auth/email-already-in-use") {
         friendlyMsg = "An account with this email already exists.";
       } else if (code === "auth/weak-password") {
-        friendlyMsg = "Password should be at least 6 characters.";
+        friendlyMsg = "Firebase Weak Password: Password should be at least 6 characters.";
       } else if (code === "auth/invalid-email") {
         friendlyMsg = "Please enter a valid email address.";
       }
@@ -194,7 +200,7 @@ function LoginComponent() {
       toast.success("Debug info copied to clipboard.");
       setTimeout(() => setDebugCopied(false), 2500);
     } catch {
-      toast.error("Could not copy. Please manually select and copy the text.");
+      toast.error("Could not copy automatically. Please copy the text manually.");
     }
   };
 
@@ -206,7 +212,7 @@ function LoginComponent() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-12">
-      {/* Ambient glow */}
+      {/* Ambient background glows */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-hero-glow opacity-40" />
 
       <motion.div
@@ -215,80 +221,131 @@ function LoginComponent() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        {/* Logo + heading */}
+        {/* Header branding */}
         <div className="flex flex-col items-center mb-8">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary glow-ring mb-4">
             <Plane className="h-6 w-6 text-primary-foreground transform -rotate-12" />
           </span>
-          <h1 className="font-display text-2xl font-bold text-foreground">
+          <h1 className="font-display text-2xl font-bold text-slate-900">
             CareerPilot<span className="text-primary">AI</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-slate-400 mt-1">
             Empower your career growth journey
           </p>
         </div>
 
         <GlassCard glow="primary" className="p-8 shadow-xl">
-          {/* Card title */}
+          {/* Card Title Header */}
           <div className="text-center mb-6">
-            <h2 className="text-lg font-bold text-foreground flex items-center justify-center gap-2">
-              <LogIn className="h-5 w-5 text-primary" />
-              {isSignUp ? "Create Account" : "Get Started"}
+            <h2 className="text-lg font-bold text-slate-900 flex items-center justify-center gap-2">
+              {activeTab === "login" ? (
+                <>
+                  <LogIn className="h-5 w-5 text-primary" /> Log In to Account
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-5 w-5 text-primary" /> Create Account
+                </>
+              )}
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
-              {isSignUp
-                ? "Register with email and password"
-                : "Sign in or choose an authentication method"}
+              {activeTab === "login"
+                ? "Enter your credentials to access the dashboard"
+                : "Fill out the fields below to sign up"}
             </p>
           </div>
 
-          {/* Local network warning */}
+          {/* Local IP Alert warning */}
           {isLocalNetworkIp && (
             <div className="mb-5 flex items-start gap-2.5 rounded-xl bg-amber-500/10 p-3.5 text-xs text-amber-600 border border-amber-500/20 leading-relaxed">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
               <div>
                 <p className="font-bold">Local Network IP Detected</p>
                 <p className="mt-1">
-                  Google sign-in may fail because Firebase restricts OAuth to
-                  authorized domains.{" "}
-                  <code className="bg-amber-500/10 px-1 rounded">
-                    {hostname}
-                  </code>{" "}
-                  is not an authorized domain. Access the app via{" "}
-                  <strong>localhost</strong> or a deployed domain for reliable
-                  Google sign-in.
+                  Google login may fail because Firebase restricts OAuth to
+                  authorized domains. Access the app via{" "}
+                  <strong>localhost</strong> or your deployed domain.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Email / Password Form */}
+          {/* Premium Animated Tabs */}
+          <div className="flex rounded-xl bg-slate-100 p-1 mb-6 border border-slate-200/50">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("login");
+                setGoogleAuthError(null);
+              }}
+              className={cn(
+                "flex-1 py-2 text-xs font-bold rounded-lg transition-all relative cursor-pointer",
+                activeTab === "login"
+                  ? "text-slate-900"
+                  : "text-slate-500 hover:text-slate-800",
+              )}
+            >
+              {activeTab === "login" && (
+                <motion.span
+                  layoutId="active-tab"
+                  className="absolute inset-0 bg-white rounded-lg border border-slate-200/80 shadow-sm"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">Log In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("signup");
+                setGoogleAuthError(null);
+              }}
+              className={cn(
+                "flex-1 py-2 text-xs font-bold rounded-lg transition-all relative cursor-pointer",
+                activeTab === "signup"
+                  ? "text-slate-900"
+                  : "text-slate-500 hover:text-slate-800",
+              )}
+            >
+              {activeTab === "signup" && (
+                <motion.span
+                  layoutId="active-tab"
+                  className="absolute inset-0 bg-white rounded-lg border border-slate-200/80 shadow-sm"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">Sign Up</span>
+            </button>
+          </div>
+
+          {/* Authentication Form */}
           <form onSubmit={handleEmailSubmit} className="space-y-4 mb-4">
-            {isSignUp && (
-              <div className="space-y-1">
-                <Label htmlFor="name" className="text-xs font-semibold">
+            {activeTab === "signup" && (
+              <div className="space-y-1 animate-fade-in">
+                <Label htmlFor="name" className="text-xs font-semibold text-slate-700">
                   Full Name
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     id="name"
                     type="text"
-                    placeholder="Jane Doe"
+                    placeholder="John Doe"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     className="pl-10 h-11 rounded-xl glass border-border focus-visible:ring-primary/50"
+                    required
                   />
                 </div>
               </div>
             )}
 
             <div className="space-y-1">
-              <Label htmlFor="email" className="text-xs font-semibold">
+              <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
                 Email Address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   id="email"
                   type="email"
@@ -302,23 +359,43 @@ function LoginComponent() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="password" className="text-xs font-semibold">
+              <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={activeTab === "signup" ? "Min. 8 characters" : "••••••••"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 h-11 rounded-xl glass border-border focus-visible:ring-primary/50"
                   required
-                  minLength={6}
+                  minLength={activeTab === "signup" ? 8 : 6}
                 />
               </div>
             </div>
+
+            {activeTab === "signup" && (
+              <div className="space-y-1 animate-fade-in">
+                <Label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-700">
+                  Confirm Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10 h-11 rounded-xl glass border-border focus-visible:ring-primary/50"
+                    required
+                  />
+                </div>
+              </div>
+            )}
 
             <Button
               type="submit"
@@ -327,31 +404,15 @@ function LoginComponent() {
             >
               {submitting === "email" ? (
                 <div className="h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              ) : isSignUp ? (
+              ) : activeTab === "signup" ? (
                 "Create Account"
               ) : (
-                "Sign In"
+                "Log In"
               )}
             </Button>
           </form>
 
-          {/* Toggle sign-up / sign-in */}
-          <div className="text-center mb-6">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setGoogleAuthError(null);
-              }}
-              className="text-xs text-primary hover:underline font-semibold cursor-pointer"
-            >
-              {isSignUp
-                ? "Already have an account? Sign In"
-                : "Don't have an account? Sign Up"}
-            </button>
-          </div>
-
-          {/* Divider */}
+          {/* Social connection divider */}
           <div className="relative flex py-1 items-center mb-5">
             <div className="flex-grow border-t border-border" />
             <span className="flex-shrink mx-4 text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
@@ -360,12 +421,10 @@ function LoginComponent() {
             <div className="flex-grow border-t border-border" />
           </div>
 
-          {/* Social / OAuth buttons */}
+          {/* Social Sign-In buttons */}
           <div className="space-y-3">
-            {/* Google */}
             <Button
               type="button"
-              id="google-login-btn"
               onClick={handleGoogleLogin}
               disabled={submitting !== null}
               variant="outline"
@@ -399,14 +458,12 @@ function LoginComponent() {
                 </svg>
               )}
               {isLocalNetworkIp
-                ? "Continue with Google (May Fail)"
+                ? "Continue with Google (Try Anyway)"
                 : "Continue with Google"}
             </Button>
 
-            {/* Guest */}
             <Button
               type="button"
-              id="guest-login-btn"
               onClick={handleGuestLogin}
               disabled={submitting !== null}
               variant="outline"
@@ -421,7 +478,7 @@ function LoginComponent() {
             </Button>
           </div>
 
-          {/* Google Auth Error Debug Panel */}
+          {/* Error display and copying panel */}
           {googleAuthError && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -433,8 +490,7 @@ function LoginComponent() {
                 <div className="flex-1">
                   <p className="font-bold">Google Authentication Failed</p>
                   <p className="mt-0.5 text-[11px] leading-relaxed opacity-80">
-                    Debug details are shown below. Copy and share if you need
-                    help.
+                    Configuration and error logs for debugging:
                   </p>
                 </div>
               </div>
@@ -474,7 +530,7 @@ function LoginComponent() {
                 type="button"
                 onClick={handleCopyDebugInfo}
                 size="sm"
-                className="w-full h-9 rounded-xl bg-destructive/80 hover:bg-destructive text-destructive-foreground text-xs font-semibold cursor-pointer flex items-center gap-2"
+                className="w-full h-9 rounded-xl bg-destructive/80 hover:bg-destructive text-destructive-foreground text-xs font-semibold cursor-pointer flex items-center justify-center gap-2"
               >
                 {debugCopied ? (
                   <>
@@ -491,20 +547,26 @@ function LoginComponent() {
             </motion.div>
           )}
 
-          {/* Info notice */}
+          {/* Safe/Guest notification */}
           <div className="mt-5 flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-xs text-muted-foreground border border-primary/10 leading-relaxed">
             <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
             <p>
-              Guest Mode provides full access to all features. Data is stored
-              locally and won't sync across devices.
+              By signing up, your resume analysis, ATS records, and roadmaps will
+              be safely saved and accessible from any device.
             </p>
           </div>
         </GlassCard>
 
-        <p className="text-center text-xs text-muted-foreground mt-8">
+        <p className="text-center text-xs text-slate-400 mt-8">
           By continuing, you agree to our{" "}
-          <span className="underline cursor-pointer">Terms of Service</span> and{" "}
-          <span className="underline cursor-pointer">Privacy Policy</span>.
+          <span className="underline cursor-pointer hover:text-slate-600">
+            Terms of Service
+          </span>{" "}
+          and{" "}
+          <span className="underline cursor-pointer hover:text-slate-600">
+            Privacy Policy
+          </span>
+          .
         </p>
       </motion.div>
     </div>

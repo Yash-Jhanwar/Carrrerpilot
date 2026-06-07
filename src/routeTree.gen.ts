@@ -18,6 +18,7 @@ import { Route as DashRoadmapRouteImport } from './routes/_dash.roadmap'
 import { Route as DashResumeRouteImport } from './routes/_dash.resume'
 import { Route as DashResourcesRouteImport } from './routes/_dash.resources'
 import { Route as DashRecruiterRouteImport } from './routes/_dash.recruiter'
+import { Route as DashProfileRouteImport } from './routes/_dash.profile'
 import { Route as DashPricingRouteImport } from './routes/_dash.pricing'
 import { Route as DashPortfolioRouteImport } from './routes/_dash.portfolio'
 import { Route as DashMatchRouteImport } from './routes/_dash.match'
@@ -70,6 +71,11 @@ const DashRecruiterRoute = DashRecruiterRouteImport.update({
   path: '/recruiter',
   getParentRoute: () => DashRoute,
 } as any)
+const DashProfileRoute = DashProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DashRoute,
+} as any)
 const DashPricingRoute = DashPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/match': typeof DashMatchRoute
   '/portfolio': typeof DashPortfolioRoute
   '/pricing': typeof DashPricingRoute
+  '/profile': typeof DashProfileRoute
   '/recruiter': typeof DashRecruiterRoute
   '/resources': typeof DashResourcesRoute
   '/resume': typeof DashResumeRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/match': typeof DashMatchRoute
   '/portfolio': typeof DashPortfolioRoute
   '/pricing': typeof DashPricingRoute
+  '/profile': typeof DashProfileRoute
   '/recruiter': typeof DashRecruiterRoute
   '/resources': typeof DashResourcesRoute
   '/resume': typeof DashResumeRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/_dash/match': typeof DashMatchRoute
   '/_dash/portfolio': typeof DashPortfolioRoute
   '/_dash/pricing': typeof DashPricingRoute
+  '/_dash/profile': typeof DashProfileRoute
   '/_dash/recruiter': typeof DashRecruiterRoute
   '/_dash/resources': typeof DashResourcesRoute
   '/_dash/resume': typeof DashResumeRoute
@@ -172,6 +181,7 @@ export interface FileRouteTypes {
     | '/match'
     | '/portfolio'
     | '/pricing'
+    | '/profile'
     | '/recruiter'
     | '/resources'
     | '/resume'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/match'
     | '/portfolio'
     | '/pricing'
+    | '/profile'
     | '/recruiter'
     | '/resources'
     | '/resume'
@@ -207,6 +218,7 @@ export interface FileRouteTypes {
     | '/_dash/match'
     | '/_dash/portfolio'
     | '/_dash/pricing'
+    | '/_dash/profile'
     | '/_dash/recruiter'
     | '/_dash/resources'
     | '/_dash/resume'
@@ -286,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashRecruiterRouteImport
       parentRoute: typeof DashRoute
     }
+    '/_dash/profile': {
+      id: '/_dash/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof DashProfileRouteImport
+      parentRoute: typeof DashRoute
+    }
     '/_dash/pricing': {
       id: '/_dash/pricing'
       path: '/pricing'
@@ -346,6 +365,7 @@ interface DashRouteChildren {
   DashMatchRoute: typeof DashMatchRoute
   DashPortfolioRoute: typeof DashPortfolioRoute
   DashPricingRoute: typeof DashPricingRoute
+  DashProfileRoute: typeof DashProfileRoute
   DashRecruiterRoute: typeof DashRecruiterRoute
   DashResourcesRoute: typeof DashResourcesRoute
   DashResumeRoute: typeof DashResumeRoute
@@ -361,6 +381,7 @@ const DashRouteChildren: DashRouteChildren = {
   DashMatchRoute: DashMatchRoute,
   DashPortfolioRoute: DashPortfolioRoute,
   DashPricingRoute: DashPricingRoute,
+  DashProfileRoute: DashProfileRoute,
   DashRecruiterRoute: DashRecruiterRoute,
   DashResourcesRoute: DashResourcesRoute,
   DashResumeRoute: DashResumeRoute,
