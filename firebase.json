@@ -1,0 +1,12 @@
+{
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "CareerPilot AI",
+        "supportEmail": "yashjhanwar@gmail.com"
+      }
+    }
+  }
+}
