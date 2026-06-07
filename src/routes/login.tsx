@@ -102,12 +102,19 @@ function LoginComponent() {
       const message: string = err?.message ?? "An unexpected error occurred.";
       console.error("[Login] Google auth error:", code, message);
 
-      setGoogleAuthError({ code, message });
+      // Only show the debug panel for system errors (unauthorized domain, operations not allowed, etc.), NOT user cancellation
+      const isUserCancellation =
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/cancelled-popup-request";
 
-      if (code === "auth/popup-closed-by-user") {
+      if (!isUserCancellation) {
+        setGoogleAuthError({ code, message });
+      }
+
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         toast.info("Google Sign-In cancelled.");
       } else if (code === "auth/unauthorized-domain") {
-        toast.error("This domain is not authorized for OAuth. See debug info.");
+        toast.error("This domain is not authorized for OAuth. See debug info below.");
       } else {
         toast.error(`Google Sign-In failed: ${code}`);
       }
