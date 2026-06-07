@@ -80,7 +80,8 @@ async function syncUserDoc(
       existingData = docSnap.data();
     }
   } catch (err) {
-    console.warn("[Auth] Presumed new user or error fetching existing user doc:", err);
+    // Quiet debug log - doesn't print warning/error in user console
+    console.debug("[Auth] Presumed new user or error fetching existing user doc (possibly offline/ad-blocked):", err);
   }
 
   const name =
@@ -108,7 +109,8 @@ async function syncUserDoc(
     await setDoc(userRef, userData, { merge: true });
     console.log(`[Auth] Firestore document synced successfully for UID: ${firebaseUser.uid}`);
   } catch (err) {
-    console.error("[Auth] Error writing user doc to Firestore:", err);
+    // Quiet debug log - doesn't print warning/error in user console
+    console.debug("[Auth] Error writing user doc to Firestore (possibly offline/ad-blocked):", err);
   }
 }
 
