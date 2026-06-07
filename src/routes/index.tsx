@@ -182,7 +182,7 @@ function Landing() {
       </section>
 
       {/* features */}
-      <section id="features" className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+      <section id="features" className="mx-auto max-w-7xl px-4 pt-[max(5rem,100vh-620px)] pb-20 lg:px-8">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-bold sm:text-4xl">
             Everything you need to get hired
